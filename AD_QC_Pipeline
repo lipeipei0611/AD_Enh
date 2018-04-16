@@ -1,0 +1,197 @@
+inputFile <- "data_AD.txt"
+data_AD <- read.table(file.path(inputFile), header=TRUE, sep=" ")
+data_cg <- subset(data_AD, data_AD$type == "CG")
+dim(data_cg)
+data_ch <- subset(data_AD, data_AD$type != "CG")
+dim(data_ch)
+
+
+length_cg <- matrix(data=0, nrow=6, ncol=131)
+for (i in 1: 131 ){
+
+length_cg[1, i] <- length(which(data_cg[, 2*(i+2)] + data_cg[,2*(i+2)+1] == 0))
+length_cg[2, i] <- length(which(data_cg[, 2*(i+2)] + data_cg[,2*(i+2)+1] > 0))
+length_cg[3, i] <- length(which(data_cg[, 2*(i+2)] + data_cg[,2*(i+2)+1] > 29))
+length_cg[4, i] <- length(which(data_cg[, 2*(i+2)] + data_cg[,2*(i+2)+1] > 49))
+length_cg[5, i] <- length(which(data_cg[, 2*(i+2)] + data_cg[,2*(i+2)+1] > 99))
+length_cg[6, i] <- length(which(data_cg[, 2*(i+2)] + data_cg[,2*(i+2)+1] > 999))
+next
+}
+
+
+length_ch <- matrix(data=0, nrow=6, ncol=131)
+for (i in 1: 131 ){
+
+length_ch[1, i] <- length(which(data_ch[, 2*(i+2)] + data_ch[,2*(i+2)+1] == 0))
+length_ch[2, i] <- length(which(data_ch[, 2*(i+2)] + data_ch[,2*(i+2)+1] > 0))
+length_ch[3, i] <- length(which(data_ch[, 2*(i+2)] + data_ch[,2*(i+2)+1] > 29))
+length_ch[4, i] <- length(which(data_ch[, 2*(i+2)] + data_ch[,2*(i+2)+1] > 49))
+length_ch[5, i] <- length(which(data_ch[, 2*(i+2)] + data_ch[,2*(i+2)+1] > 99))
+length_ch[6, i] <- length(which(data_ch[, 2*(i+2)] + data_ch[,2*(i+2)+1] > 999))
+next
+}
+
+
+plot(length_cg[2,], xlab="Samples", main = "Distribution of CpGs coverage > 0 for all samples", ylab="Number of CpGs coverage > 0", type="p")
+plot(length_cg[3,], xlab="Samples", main = "Distribution of CpGs coverage >= 30 for all samples", ylab="Number of CpGs coverage >= 30", type="p")
+
+plot(length_ch[2,], xlab="Samples", main = "Distribution of CpHs coverage > 0 for all samples", ylab="Number of CpHs coverage > 0", type="p")
+plot(length_ch[3,], xlab="Samples", main = "Distribution of CpHs coverage >= 30 for all samples", ylab="Number of CpHs coverage >= 30", type="p")
+
+
+plot(density(log10(data_cg[,6] + data_cg[,7])), col = 1, main = "Densiy of CpGs coverage for all Samples", xlab = "log10(CpGs coverage)", ylab = "density", sub = "")
+
+for (i in 2: 131 ){
+lines(density(log10(data_cg[, 2*(i+2)] + data_cg[,2*(i+2)+1])), col = i)
+next
+}
+abline(v=log10(30), col="black")
+
+plot(density(log10(data_ch[,6] + data_ch[,7])), col = 1, main = "Densiy of CpHs coverage for all Samples", xlab = "log10(CpHs coverage)", ylab = "density", sub = "")
+
+for (i in 2: 131 ){
+lines(density(log10(data_ch[, 2*(i+2)] + data_ch[,2*(i+2)+1])), col = i)
+next
+}
+abline(v=log10(30), col="black")
+
+
+
+
+
+
+
+
+
+t <- matrix(data = 0, nrow = 5725177, ncol = 131)
+temp <- data.frame(data_AD[, 1:5], t)
+
+
+colnames(temp) <- c("chr", "SNP", "str", "type","seq", "A1_2", "A1", "A2_2", "A2", "A3_2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11","A12", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11", "B12", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C12", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "E9", "E10", "E11", "E12","F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10_2", "F10", "F11", "F12", "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H9", "H10", "H11", "H12", "P2A1", "P2A2", "P2A3", "P2A4", "P2A5", "P2A6", "P2A7", "P2A8", "P2A9", "P2A10", "P2A11", "P2A12", "P2B1", "P2B2", "P2B3", "P2B4", "P2B5", "P2B6", "P2B7", "P2B8", "P2B9", "P2B10", "P2B11", "P2B12", "P2C1", "P2C2", "P2C3", "P2C4", "P2C5", "P2C6", "P2C7")
+
+for (i in 0: 130 ){ 
+temp[, c(i+6)] <- ifelse((data_AD[,c(2*i+6)] + data_AD[,c(2*i+7)]) > 29, (data_AD[,c(2*i+6)] / (data_AD[,c(2*i+6)] + data_AD[,c(2*i+7)]) ) * 100, NA)
+next
+}
+data_AD_methy <- temp
+write.table(data_AD_methy, "data_AD_methy.txt", row.names=FALSE, quote=FALSE)
+
+
+data_AD_methy_CG <- subset(data_AD_methy, data_AD_methy$type == "CG")
+data_AD_methy_CG_noNA <- na.omit(data_AD_methy_CG)
+data_AD_methy_CH <- subset(data_AD_methy, data_AD_methy$type != "CG")
+data_AD_methy_CH_noNA <- na.omit(data_AD_methy_CH)
+
+
+
+plot(density(data_AD_methy_CG_noNA[, c(6)]), col = 1, main = "Density of Methylation call (CpG) for all Samples", xlab = "Methylation call (CpG)", ylab = "Density", sub = "", xlim=c(0, 100), ylim=c(0.00, 0.8))
+for (i in 0:129 ){
+lines(density(data_AD_methy_CG_noNA[, c(i+7)]), col = i+2)
+next
+}
+
+
+
+plot(density(data_AD_methy_CH_noNA[, c(6)]), col = 1, main = "Density of Methylation call (CpH) for all Samples", xlab = "Methylation call (CpH)", ylab = "Density", sub = "", xlim=c(0, 100), ylim=c(0.00, 8))
+for (i in 0:129 ){
+lines(density(data_AD_methy_CH_noNA[, c(i+7)]), col = i+2)
+next
+}
+
+
+data_AD_methy_noNA <- na.omit(data_AD_methy)
+
+correl <- cor(data_AD_methy_noNA[, 6: 136])
+
+write.table(correl, "correl.txt", quote=FALSE, row.names=FALSE)
+
+correl_CG <- cor(data_AD_methy_CG_noNA[, 6: 136])
+
+write.table(correl_CG, "correl_CG.txt", quote=FALSE, row.names=FALSE)
+
+correl_CH <- cor(data_AD_methy_CH_noNA[, 6: 136])
+
+write.table(correl_CH, "correl_CH.txt", quote=FALSE, row.names=FALSE)
+
+library(reshape2)
+
+# Melt the correlation matrix
+library(reshape2)
+reorder_cormat <- function(cormat){
+# Use correlation between variables as distance
+dd <- as.dist((1-cormat)/2)
+hc <- hclust(dd)
+cormat <-cormat[hc$order, hc$order]
+}
+# Reorder the correlation matrix
+cormat <- reorder_cormat(correl)
+
+melted_cormat <- melt(cormat, na.rm = TRUE)
+# Heatmap
+library(ggplot2)
+ggplot(data = melted_cormat, aes(Var2, Var1, fill = value))+
+ geom_tile(color = "white")+
+ scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+   midpoint = 0, limit = c(0,1), space = "Lab", 
+   name="pearson\nCorrelation") +
+  theme_minimal()+ 
+ theme(axis.text.x = element_text(angle = 90, vjust = 1, 
+    size = 8, hjust = 1))+
+ coord_fixed()
+
+
+
+
+
+
+
+data_AD_methy_noWGA <- subset(data_AD_methy[, which(names(data_AD_methy) %in% c("chr", "SNP", "str", "type", "seq", "A1_2", "A1", "A2_2", "A2", "A3_2", "A3", "A4", "A6", "A7", "A8", "A9", "A10", "A11", "A12", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11", "B12", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C12", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "E9", "E10", "E11", "E12", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10_2", "F10", "F11", "F12", "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H9", "H10", "H11", "H12", "P2A1", "P2A2", "P2A3", "P2A4", "P2A5", "P2A6", "P2A7", "P2A8", "P2A9", "P2A11", "P2A12", "P2B1", "P2B2", "P2B3", "P2B4", "P2B5", "P2B6", "P2B7", "P2B8", "P2B9", "P2B10", "P2B11", "P2B12", "P2C1", "P2C2", "P2C3", "P2C4", "P2C5", "P2C6", "P2C7"))])
+write.table(data_AD_methy_noWGA, "data_AD_methy_noWGA.txt", quote=FALSE, row.names=FALSE)
+
+dim(data_AD_methy_noWGA)
+data_AD_methy_noWGA_rm7outlier <- subset(data_AD_methy_noWGA[, which(names(data_AD_methy_noWGA) %in% c("chr", "SNP", "str", "type", "seq", "A1_2", "A1", "A2_2", "A2", "A3_2", "A3", "A4", "A6", "A7", "A8", "A9", "A10", "A11", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11", "B12", "C1", "C2", "C3", "C6", "C7", "C8", "C9", "C10", "C11", "C12", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D12", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "E9", "E10", "E11", "E12", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10_2", "F10", "F11", "F12", "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H10", "H11", "H12", "P2A1", "P2A2", "P2A3", "P2A4", "P2A5", "P2A6", "P2A7", "P2A8", "P2A9", "P2A11", "P2A12", "P2B1", "P2B2", "P2B3", "P2B4", "P2B5", "P2B6", "P2B9", "P2B10", "P2B11", "P2B12", "P2C1", "P2C2", "P2C3", "P2C4", "P2C5", "P2C6", "P2C7"))])
+
+ave1 <- rowMeans(subset(data_AD_methy_noWGA_rm7outlier, select = c("A1", "A1_2")), na.rm=TRUE)
+ave2 <- rowMeans(subset(data_AD_methy_noWGA_rm7outlier, select = c("A2", "A2_2")), na.rm=TRUE)
+ave3 <- rowMeans(subset(data_AD_methy_noWGA_rm7outlier, select = c("A3", "A3_2")), na.rm=TRUE)
+ave4 <- rowMeans(subset(data_AD_methy_noWGA_rm7outlier, select = c("F10", "F10_2")), na.rm=TRUE)
+ave5 <- rowMeans(subset(data_AD_methy_noWGA_rm7outlier, select = c("A6", "P2A11", "P2A12")), na.rm=TRUE)
+ave6 <- rowMeans(subset(data_AD_methy_noWGA_rm7outlier, select = c("A7", "P2B1", "P2B2")), na.rm=TRUE)
+ave7 <- rowMeans(subset(data_AD_methy_noWGA_rm7outlier, select = c("A8", "P2B3", "P2B4")), na.rm=TRUE)
+ave8 <- rowMeans(subset(data_AD_methy_noWGA_rm7outlier, select = c("A11", "P2B5", "P2B6")), na.rm=TRUE)
+ave9 <- rowMeans(subset(data_AD_methy_noWGA_rm7outlier, select = c("B1", "P2B9", "P2B10")), na.rm=TRUE)
+ave10 <- rowMeans(subset(data_AD_methy_noWGA_rm7outlier, select = c("B2", "P2B11", "P2B12")), na.rm=TRUE)
+ave11 <- rowMeans(subset(data_AD_methy_noWGA_rm7outlier, select = c("D2", "P2A9")), na.rm=TRUE)
+ave12 <- rowMeans(subset(data_AD_methy_noWGA_rm7outlier, select = c("F8", "P2C6")), na.rm=TRUE)
+ave13 <- rowMeans(subset(data_AD_methy_noWGA_rm7outlier, select = c("F12", "P2A8")), na.rm=TRUE)
+ave14 <- rowMeans(subset(data_AD_methy_noWGA_rm7outlier, select = c("P2A3", "P2A5")), na.rm=TRUE)
+ave15 <- rowMeans(subset(data_AD_methy_noWGA_rm7outlier, select = c("P2C4", "P2C7")), na.rm=TRUE)
+
+temp <- subset(data_AD_methy_noWGA_rm7outlier[, which(names(data_AD_methy_noWGA_rm7outlier) %in% c("chr", "SNP", "str", "type", "seq", "A4",  "A9", "A10", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11", "B12", "C1", "C2", "C3", "C6", "C7", "C8", "C9", "C10", "C11", "C12", "D1", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D12", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "E9", "E10", "E11", "E12", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F9", "F11", "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H10", "H11", "H12", "P2A1", "P2A2", "P2A4", "P2A6", "P2A7", "P2C1", "P2C2", "P2C3", "P2C5"))])
+
+
+data_AD_methy_noWGA_rm7outlier_rmReplicate <- data.frame(temp, ave1, ave2, ave3, ave4, ave5, ave6, ave7, ave8, ave9, ave10, ave11, ave12, ave13, ave14, ave15)
+colnames(data_AD_methy_noWGA_rm7outlier_removeReplicate) <- c("chr", "SNP", "str", "type", "seq", "A4", "A9", "A10", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11", "B12", "C1", "C2", "C3", "C6", "C7", "C8", "C9", "C10", "C11", "C12", "D1", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D12", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "E9", "E10", "E11", "E12", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F9", "F11", "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H10", "H11", "H12", "P2A1", "P2A2", "P2A4", "P2A6", "P2A7", "P2C1", "P2C2", "P2C3", "P2C5", "A1", "A2", "A3", "F10", "A6", "A7", "A8", "A11", "B1", "B2", "D2", "F8", "F12", "P2A3", "P2C4")
+
+
+data_AD_methy_noWGA_rm7outlier_rmReplicate_70p <- data_AD_methy_noWGA_rm7outlier_rmReplicate[rowSums(is.na(data_AD_methy_noWGA_rm7outlier_rmReplicate[, 6:106])) <= ceiling(101*0.3), ]
+dim(data_AD_methy_noWGA_rm7outlier_rmReplicate_70p)
+
+
+data_AD_methy_noWGA_rm7outlier_rmReplicate_70p_rm0 <- data_AD_methy_noWGA_rm7outlier_rmReplicate_70p[rowSums(data_AD_methy_noWGA_rm7outlier_rmReplicate_70p[, 6:106], na.rm=TRUE) > 0, ]
+dim(data_AD_methy_noWGA_rm7outlier_rmReplicate_70p_rm0)	
+
+
+inputFile <- "SNPList_common_phase3.txt"
+SNPList_common_phase3 <- read.table(file.path(inputFile), header=FALSE, sep=" ")
+length(SNPList_common_phase3[,1])
+colnames(SNPList_common_phase3) <- c("chr", "SNP", "rs", "before", "after")
+SNPList_common_phase3_unique <- unique(SNPList_common_phase3[,1:2])
+dim(SNPList_common_phase3_unique)
+
+data_AD_methy_noWGA_rm7outlier_rmReplicate_70p_rm0_rmCommonSNP <- subset(data_AD_methy_noWGA_rm7outlier_rmReplicate_70p_rm0, !((paste(data_AD_methy_noWGA_rm7outlier_rmReplicate_70p_rm0$chr, data_AD_methy_noWGA_rm7outlier_rmReplicate_70p_rm0$SNP, sep="_") %in% paste(SNPList_common_phase3_unique$chr, SNPList_common_phase3_unique$SNP, sep="_"))))
+	
+dim(data_AD_methy_noWGA_rm7outlier_rmReplicate_70p_rm0_rmCommonSNP)	
+
+
+write.table(AD_Methylation, "data_AD_methy_noWGA_rm7outlier_rmReplicate_70p_rm0_rmCommonSNP.txt", quote=FALSE, row.names=FALSE)
