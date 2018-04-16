@@ -1,0 +1,159 @@
+###---Transform b-value to m-value
+AD_factor <- subset(AD_factor_101_prop_GLU, AD_factor_101_prop_GLU$BraakStage >= 1 & AD_factor_101_prop_GLU$BraakStage <= 4)
+write.table(AD_factor, "AD_factor.txt", quote=FALSE, row.names=FALSE, sep="\t")
+
+
+AD_Methylation <- read.table("AD_Methylation.txt", header=TRUE)
+
+ncol(AD_Methylation)
+
+y.transf.betareg <- function(y){
+    n.obs <- sum(!is.na(y))
+    (y * (n.obs - 1) + 0.5) / n.obs
+}
+ 
+AD_Methylation_t <- y.transf.betareg(AD_Methylation[, 6: 106]/100)
+
+
+ 
+library(lumi)
+MValues_offset <- beta2m(AD_Methylation_t)
+
+AD_Methylation_MValue <- data.frame(AD_Methylation[, 1:5], MValues_offset, check.names=FALSE)
+write.table(AD_Methylation_MValue, "AD_Methylation_MValue.txt", row.names=FALSE, quote=FALSE)
+
+
+###---perform linear regression to find DMC
+data2 <- AD_Methylation_MValue[, 6:ncol(AD_Methylation_MValue)]
+
+design1 <- model.matrix(~ BraakStage + Sex + Age + PostMortem + prop_GLU, data= AD_factor)
+head(design1)
+
+library("limma")
+fit <- lmFit(data2, design=design1,method="robust")
+fit <- eBayes(fit)
+rlmFit <- cbind(AD_Methylation_MValue[,1:5],toptable(fit,coef=2,adjust.method="BH",sort="none",n=Inf))
+head(rlmFit)
+rlmFit_sub <- subset(rlmFit, rlmFit$adj.P.Val <= 0.05)
+length(rlmFit_sub[,1])
+
+write.table(rlmFit, "rlmFit.txt", row.names=FALSE, quote=FALSE)
+
+
+AD_Methylation_ebayes_mvalue <- cbind(AD_Methylation, rlmFit$P.Value )
+colnames(AD_Methylation_ebayes_mvalue) <- c("chr", "SNP", "str", "type", "seq", "A4", "A9", "A10", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11", "B12", "C1", "C2", "C3", "C6", "C7", "C8", "C9", "C10", "C11", "C12", "D1", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D12", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "E9", "E10", "E11", "E12", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F9", "F11", "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H10", "H11", "H12", "P2A1", "P2A2", "P2A4", "P2A6", "P2A7", "P2C1", "P2C2", "P2C3", "P2C5", "A1", "A2", "A3", "F10", "A6", "A7", "A8", "A11", "B1", "B2", "D2", "F8", "F12", "P2A3", "P2C4", "PValue")
+
+AD_Methylation_ebayes_mvalue_order <- AD_Methylation_ebayes_mvalue[order(AD_Methylation_ebayes_mvalue$PValue),]
+
+AD_Methylation_ebayes_mvalue_top10p <- AD_Methylation_ebayes_mvalue_order[1: 120751,]
+
+write.table(AD_Methylation_ebayes_mvalue_top10p, "AD_Methylation_ebayes_mvalue_top10p.txt", quote=FALSE, row.names=FALSE)
+
+AD_Methylation_ebayes_mvalue_top10p_coor <- AD_Methylation_ebayes_mvalue_top10p[,1:5]
+write.table(AD_Methylation_ebayes_mvalue_top10p_coor, "AD_Methylation_ebayes_mvalue_top10p_coor.txt", quote=FALSE, row.names=FALSE)
+
+###---perform hypergemetric test to find candidate DMR
+inputFile <- "AD_Methylation_background_region.txt"
+AD_Methylation_background_region <- read.table(file.path(inputFile), header=FALSE, sep=" ")
+head(AD_Methylation_background_region)
+length(AD_Methylation_background_region[,1])
+colnames(AD_Methylation_background_region) <- c("chr", "loc1", "loc2", "SigC_Count")
+
+AD_Methylation_coor <- AD_Methylation[, 1:5]
+
+x <- matrix(data = 0, nrow = 16684, ncol = 1)
+for (i in 1: 16684 ){
+sub <- subset(AD_Methylation_coor[which(AD_Methylation_coor$chr == AD_Methylation_background_region[i,1] & AD_Methylation_coor$SNP >= AD_Methylation_background_region[i,2] & AD_Methylation_coor$SNP <= AD_Methylation_background_region[i,3] ),])
+x[i,1]= length(sub[,1])
+
+next
+}
+
+
+AD_Methylation_background_region_infor <- data.frame(AD_Methylation_background_region, x)
+write.table(AD_Methylation_background_region_infor, "AD_Methylation_background_region_infor.txt", quote=FALSE, row.names=FALSE)
+
+
+phyper_pvalue <- matrix(data = 0, nrow = 16684, ncol = 1)
+for (i in 1: 16684 ){
+PopSize <- 1207507
+list1 <- 120751
+list2 <- AD_Methylation_background_region_infor[i,5]
+overlap <- AD_Methylation_background_region_infor[i,4]
+phyper_pvalue[i,1] <- phyper(overlap-1,list1,PopSize-list1,list2,lower.tail = FALSE, log.p = FALSE)
+next
+}
+
+AD_Methylation_background_region_infor_phyper_pvalue <- data.frame(AD_Methylation_background_region_infor, phyper_pvalue)
+
+phyper_pvalue_fdr <- p.adjust(AD_Methylation_background_region_infor_phyper_pvalue[, 6], method="fdr")
+
+AD_Methylation_background_region_infor_phyper_pvalue_fdr <- data.frame(AD_Methylation_background_region_infor_phyper_pvalue, phyper_pvalue_fdr)
+
+colnames(AD_Methylation_background_region_infor_phyper_pvalue_fdr) <- c("chr", "loc1", "loc2", "SigC_Count", "allC", "phyper_pvalue", "phyper_pvalue_fdr")
+
+AD_Methylation_background_region_infor_phyper_pvalue_fdr_0.05 <- subset(AD_Methylation_background_region_infor_phyper_pvalue_fdr, AD_Methylation_background_region_infor_phyper_pvalue_fdr$phyper_pvalue_fdr <= 0.05)
+write.table(AD_Methylation_background_region_infor_phyper_pvalue_fdr_0.05, "AD_Methylation_background_region_infor_phyper_pvalue_fdr_0.05.txt", quote=FALSE, row.names=FALSE)
+write.table(AD_Methylation_background_region_infor_phyper_pvalue_fdr, "AD_Methylation_background_region_infor_phyper_pvalue_fdr.txt", quote=FALSE, row.names=FALSE)
+
+
+length(AD_Methylation_background_region_infor_phyper_pvalue_fdr_0.05[,1])
+
+###---remove candidate DMRs which hava methyaltion changes smaller than 1% between braak group
+c <- AD_Methylation_ebayes_mvalue_top10p_coor_sort[1,]
+
+
+AD_Methylation_background_region_infor_phyper_pvalue_fdr_0.05[,1] <- factor(AD_Methylation_background_region_infor_phyper_pvalue_fdr_0.05[,1], levels=levels(AD_Methylation_ebayes_mvalue_top10p_coor_sort[,1]))
+
+
+for (i in 1: 1351 ){
+sub <- subset(AD_Methylation_ebayes_mvalue_top10p_coor_sort, AD_Methylation_ebayes_mvalue_top10p_coor_sort$chr == AD_Methylation_background_region_infor_phyper_pvalue_fdr_0.05[i,1] & AD_Methylation_ebayes_mvalue_top10p_coor_sort$SNP >= AD_Methylation_background_region_infor_phyper_pvalue_fdr_0.05[i,2] & AD_Methylation_ebayes_mvalue_top10p_coor_sort$SNP <= AD_Methylation_background_region_infor_phyper_pvalue_fdr_0.05[i,3] )
+
+c <- rbind(c, sub)
+
+next
+}
+length(c[,1])
+
+cCoor_AD_region <- c[2: 20568,]
+write.table(cCoor_AD_region, "cCoor_AD_region.txt", quote=FALSE, row.names=FALSE)
+
+
+
+
+
+rownames(AD_Methylation) <- paste(AD_Methylation[,1], AD_Methylation[,2], sep=":")
+rownames(cCoor_AD_region) <- paste(cCoor_AD_region[,1], cCoor_AD_region[,2], sep=":")
+
+cInfor_AD_region <- subset(AD_Methylation, rownames(AD_Methylation) %in% rownames(cCoor_AD_region) )
+
+
+
+
+
+AD_Sig_region <- read.table("AD_Methylation_background_region_infor_phyper_pvalue_fdr_0.05.txt", header = TRUE )
+length(AD_Sig_region[,1])
+
+infor <- AD_Sig_region[1,]
+
+for (i in 1: 1351 ){
+sub <- subset(cInfor_AD_region[which(cInfor_AD_region$chr== AD_Sig_region[i,1] & cInfor_AD_region$SNP >= AD_Sig_region[i,2] & cInfor_AD_region$SNP <= AD_Sig_region[i,3] ),])
+
+ave_12 <- data.frame(rowMeans(subset(sub[, which(names(sub) %in% c("A4", "B3", "B7", "B8", "B12", "C1", "C6", "C7", "C12", "D1", "D3", "D7", "D12", "E1", "E7", "E12", "F1", "F6", "F7", "F11", "G5", "G6", "G12", "H4", "H5", "H6", "H10", "P2A1", "P2A2", "P2A4", "P2A7", "P2C1", "P2C2", "A1", "B2", "F12", "P2A3", "P2C4"))]), na.rm=TRUE))
+ave_34 <- data.frame(rowMeans(subset(sub[, which(names(sub) %in% c("A10", "B4", "B6", "B9", "B10", "C2", "C3", "C8", "C9", "D8", "D9", "E2", "E3", "E8", "E9", "F2", "F4", "F9", "G2", "G3", "G4", "G7", "G8", "H1", "H2", "H7", "P2A6", "A2", "A7", "A11", "D2", "F8"))]), na.rm=TRUE))
+ave_56 <- data.frame(rowMeans(subset(sub[, which(names(sub) %in% c("A9", "B5", "B11", "C10", "C11", "D4", "D5", "D6", "D10", "E4", "E5", "E6", "E10", "E11", "F3", "F5", "G1", "G9", "G10", "G11", "H3", "H8", "H11", "H12", "P2C3", "P2C5", "A3", "F10", "A6", "A8", "B1"))]), na.rm=TRUE))
+
+if (any(abs(ave_56 - ave_12)>=1) )
+infor <- rbind(infor, AD_Sig_region[i,])
+
+next
+}
+length(infor[,1])
+infor <- infor[2: 1225,]
+
+write.table(infor, "AD_DMR.txt", row.names=FALSE, quote=FALSE)
+
+
+
+
+
