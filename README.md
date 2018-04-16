@@ -1,4 +1,4 @@
-# AD_Enh
+# AD_Enh---lipeipei0611@gmail.com
 #Customered codes for paper:
 #Epigenetic dysregulation of enhancers in neurons contributes to Alzheimer’s disease pathology and cognitive symptoms
 
