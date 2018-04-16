@@ -1,0 +1,171 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package findbin;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+
+/**
+ *
+ * @author peipei.li
+ */
+public class FindBin {
+
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String[] args) throws IOException {
+        // TODO code application logic here
+        
+        File outfile = new File("AD_Methylation_background_region.txt");
+
+        if(!outfile.exists())
+            outfile.createNewFile();
+        FileOutputStream out=new FileOutputStream(outfile,true);
+        
+        
+        String filename = "AD_Methylation_ebayes_mvalue_top10p_coor_sort.txt";
+        BufferedReader br;
+        File file = new File(filename);
+        br = new BufferedReader(new FileReader(file));
+        String temp = null;
+        temp = br.readLine();
+        temp = br.readLine();
+        
+        String[] list1 = temp.split(" ");
+        String chr1 = list1[0];
+        //double methylationcall1 = Double.parseDouble(list1[5]);
+        int loc1 = Integer.parseInt(list1[1]);
+        /*
+       double dir1 = Double.parseDouble(list1[5]);
+       String str1 = "";
+        if(dir1 >= 0)
+                {
+                    str1 = "+";
+                }
+        else if(dir1 < 0)
+                {
+                    str1 = "-";
+                }
+        */
+        //int loc2 = Integer.parseInt(list1[2]);
+        temp = br.readLine();
+        int Grouploc1 = loc1;
+        //int Grouploc2 = loc2;
+        int Grouploc2 = loc1;
+        //String GroupStr = str1;
+        //System.out.println("GroupStr");
+        //Double m1 = methylationcall1;
+        int flag =1;
+        StringBuffer sb=new StringBuffer();
+        //int chrPrevious=Grouploc2;
+        while(temp!=null)
+        {        
+            
+        
+            String[] list2 = temp.split(" ");
+            String chr2 = list2[0];
+            
+            /*
+
+       double dir2 = Double.parseDouble(list2[5]);
+       String str2 = "";
+        if(dir2 >= 0)
+                {
+                    str2 = "+";
+                }
+        else if(dir2 < 0)
+                {
+                    str2 = "-";
+                }
+        
+*/
+            
+            int loc2 = Integer.parseInt(list2[1]);
+            //int loc2_2 = Integer.parseInt(list2[2]);
+            //double methylationcall2 = 0;
+           
+            
+//            if(!list2[5].equals("NA"))
+            {
+                
+//                methylationcall2 = Double.parseDouble(list2[5]);
+        
+                if(chr2.equals(chr1))
+                { 
+
+                    //if(methylationcall2>=m1-10 && methylationcall2<=m1+10 && loc2 - chrPrevious <= 1000)
+                    //if(loc2 >= Grouploc1 &&  loc2 <= Grouploc2 )
+                
+                    //if(loc2 - Grouploc2 <= 1000 & str2.equals(GroupStr))
+                    if(loc2 - Grouploc2 <= 1000)
+                    {
+                        //System.out.println(m1 + " " + methylationcall2);
+                        
+                        //Grouploc2 = Math.max(Grouploc2, loc2_2);  
+                        Grouploc2 = loc2;  
+                        flag ++;
+                    }
+                    else
+                    {
+                        sb.append(chr1 + " " + Grouploc1 + " " + Grouploc2  +  " " + flag);
+                       sb.append("\n");
+                       System.out.println(flag);
+                        Grouploc1 = loc2;
+                        Grouploc2 = loc2;
+                        //GroupStr = str2;
+                        //m1 = methylationcall2;
+                        flag=1;
+                    }
+
+                    
+                }
+                else
+                {
+                  sb.append(chr1 + " " + Grouploc1 + " " + Grouploc2  +  " " + flag);
+                 sb.append("\n");
+                 System.out.println(flag);
+                 flag=1;
+               Grouploc1 = loc2;
+                        Grouploc2 = loc2;
+                        //GroupStr = str2;
+                //m1 = methylationcall2;
+                chr1 = chr2;
+                }
+                    
+            }
+            /*else
+            {
+               sb.append(chr1 + " " + Grouploc1 + " " + Grouploc2);
+               sb.append("\n");
+               System.out.println(flag);
+               flag=1;
+                Grouploc1 = loc2;
+                 Grouploc2 = loc2;
+                //m1 = 101.00;
+               
+            }*/
+            
+             //chrPrevious = loc2;
+             temp = br.readLine();
+         
+         
+        } 
+         sb.append(chr1 + " " + Grouploc1 + " " + Grouploc2 + " " + flag);
+                       sb.append("\n");
+        
+                br.close();
+
+        out.write(sb.toString().getBytes("utf-8"));
+        out.close();
+
+        
+    }
+    
+}
