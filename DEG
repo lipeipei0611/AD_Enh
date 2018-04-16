@@ -1,0 +1,72 @@
+library(readr)
+covar <- read_delim("covar_25.tsv","\t",escape_double=FALSE,trim_ws=TRUE)
+
+#--------- EdgeR
+library(edgeR)
+counts <- list.files(path = "expected_count", pattern = "L000")
+counts <- readDGE(counts,path="expected_count",columns=c(1,2),header=TRUE)
+counts <- counts$counts
+counts <- counts[,covar$ID]
+colnames(counts) <- covar$NAME
+
+#- DGEList data class
+library(edgeR)
+y <- DGEList(counts, group = covar$Condition)
+
+#- Filtering
+keep <- rowSums(cpm(y)>1) >= 18
+y <- y[keep, , keep.lib.sizes=FALSE]
+dim(y)	#[1] 18221    25	
+
+#- Normalization
+y <- calcNormFactors(y,method="TMM")
+y$samples
+
+#- CPM
+cpm <- cpm(y,normalized.lib.sizes=TRUE, log=FALSE)
+write.csv(cpm,file="cpm.csv")
+logcpm <- cpm(y,normalized.lib.sizes=TRUE, log=TRUE)
+write.csv(logcpm, file="logcpm.csv")
+
+#- Change Names to Entrez
+#http://www.gettinggeneticsdone.com/2015/12/tutorial-rna-seq-differential.html
+library("AnnotationDbi")
+library("org.Hs.eg.db")
+columns(org.Hs.eg.db)
+genes <- select(org.Hs.eg.db,keys=row.names(cpm),columns=c("SYMBOL","ENTREZID"),keytype="ENSEMBL",multiVals="first")
+genes <- genes[!duplicated(genes$ENSEMBL),]
+y$genes <- genes
+
+#- PCA
+pcafil<- prcomp(t(cpm), scale = TRUE)
+plot(pcafil$x[,1:2], col = c("green3","orange3","red3")[factor(covar$BraakGroup)])
+
+#- MDS
+plotMDS(y,col=c("green3","orange3","red3")[factor(covar$BraakGroup)],main="AD RNAseq Genes CPM")
+legend("topright",fill=c("green3","orange3","red3"),legend=c("Braak1-2","Braak3-4","Braak5-6"),cex=1)
+
+#- Cibersort
+library(readr)
+cibersort_output <- read_csv("cibersort/cibersort_output_fpkm.csv")
+covar_ciber <- merge(x=covar,y=cibersort_output,by.x="ID",by.y="Input Sample")
+covar_ciber <- covar_ciber[match(covar$ID,covar_ciber$ID),]
+
+#- Design
+design2 <- model.matrix(~BraakStage + Sex + Age + PostMortem + neurons, data=covar_ciber) 
+#- Voom
+v2 <- voom(y,design2,plot=TRUE)
+#- Limma
+vfit2 <- lmFit(v2,design2)
+efit2 <- eBayes(vfit2)
+plotSA(efit2,main="Final model: Mean−variance trend")
+summary(decideTests(efit2))
+limmavoom <- toptable(efit2,coef=2,adjust.method="BH",sort="none",n=Inf)
+#- combine gene names & cpm counts
+limmavoom <- cbind(limmavoom,efit2$genes,cpm)
+write.csv(limmavoom, file="AD_RNAseq_star_rsem_Genes_limma_Cond_sex_Age_PMI_neurons.csv")
+#- Filter FDR <= 0.05
+limmavoom_FDR <- limmavoom[limmavoom$adj.P.Val <= 0.1,]
+write.csv(limmavoom_FDR, file="AD_RNAseq_star_rsem_Genes_limma_Cond_sex_Age_PMI_neurons_0.1FDR.csv")
+#- LogFC > 1 | < -1
+limmavoom_FDR_logFC <- limmavoom_FDR[limmavoom_FDR$logFC >= 1 | limmavoom_FDR$logFC <= -1,]
+write.csv(limmavoom_FDR_logFC, file="AD_RNAseq_star_rsem_Genes_limma_Cond_sex_Age_PMI_neurons_0.1FDR_1logFC.csv")
