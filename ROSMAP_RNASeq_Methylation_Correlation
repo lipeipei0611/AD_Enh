@@ -1,0 +1,209 @@
+AD_Methylation_101_removeImprintGene_top10p_sort <- read.table("AD_Methylation_101_removeImprintGene_top10p_sort.txt", header=TRUE)
+
+head(AD_Methylation_101_removeImprintGene_top10p_sort)
+
+AD_Methylation_101_removeImprintGene_top10p_sort_RANSeq <- data.frame(AD_Methylation_101_removeImprintGene_top10p_sort[, 1:5], AD_Methylation_101_removeImprintGene_top10p_sort$F11, AD_Methylation_101_removeImprintGene_top10p_sort$E7, AD_Methylation_101_removeImprintGene_top10p_sort$P2A2, AD_Methylation_101_removeImprintGene_top10p_sort$P2C2, AD_Methylation_101_removeImprintGene_top10p_sort$B8, AD_Methylation_101_removeImprintGene_top10p_sort$B12, AD_Methylation_101_removeImprintGene_top10p_sort$E1, AD_Methylation_101_removeImprintGene_top10p_sort$H4, AD_Methylation_101_removeImprintGene_top10p_sort$H5, AD_Methylation_101_removeImprintGene_top10p_sort$P2A4, AD_Methylation_101_removeImprintGene_top10p_sort$A2, AD_Methylation_101_removeImprintGene_top10p_sort$A10, AD_Methylation_101_removeImprintGene_top10p_sort$B4, AD_Methylation_101_removeImprintGene_top10p_sort$E3, AD_Methylation_101_removeImprintGene_top10p_sort$G8, AD_Methylation_101_removeImprintGene_top10p_sort$B10, AD_Methylation_101_removeImprintGene_top10p_sort$D9, AD_Methylation_101_removeImprintGene_top10p_sort$E2, AD_Methylation_101_removeImprintGene_top10p_sort$G4, AD_Methylation_101_removeImprintGene_top10p_sort$P2C3, AD_Methylation_101_removeImprintGene_top10p_sort$C10, AD_Methylation_101_removeImprintGene_top10p_sort$D5, AD_Methylation_101_removeImprintGene_top10p_sort$D10, AD_Methylation_101_removeImprintGene_top10p_sort$E10, AD_Methylation_101_removeImprintGene_top10p_sort$F10 )
+
+colnames(AD_Methylation_101_removeImprintGene_top10p_sort_RANSeq) <- c("chr", "SNP", "str", "type", "seq", "F11", "E7", "P2A2", "P2C2", "B8", "B12", "E1", "H4", "H5", "P2A4", "A2", "A10", "B4", "E3", "G8", "B10", "D9", "E2", "G4", "P2C3", "C10", "D5", "D10", "E10", "F10")
+
+
+gene_final_sigRegion <- read.table("gene_final_sigRegion.txt", heade=T, sep="\t")
+head(gene_final_sigRegion)
+dim(gene_final_sigRegion)
+gene_final_sigRegion <- subset(gene_final_sigRegion, gene_final_sigRegion$gene != "NONE")
+dim(gene_final_sigRegion)
+
+
+
+
+
+aveMethy <- matrix(data=NA, ncol=25, nrow=length(gene_final_sigRegion[, 1]))
+for(i in 1: length(gene_final_sigRegion[, 1]))
+{
+sub <- subset(AD_Methylation_101_removeImprintGene_top10p_sort_RANSeq, AD_Methylation_101_removeImprintGene_top10p_sort_RANSeq$chr == gene_final_sigRegion[i, 2] & AD_Methylation_101_removeImprintGene_top10p_sort_RANSeq$SNP >= gene_final_sigRegion[i, 3] & AD_Methylation_101_removeImprintGene_top10p_sort_RANSeq$SNP <= gene_final_sigRegion[i, 4])
+
+aveMethy[i, ] <- colMeans(sub[, 6: 30], na.rm=TRUE)
+}
+colnames(aveMethy) <- colnames(AD_Methylation_101_removeImprintGene_top10p_sort_RANSeq[, 6: 30])
+gene_aveMethy_top10p_final_sigRegion <- data.frame(gene_final_sigRegion[, 1:4], aveMethy)
+
+
+##write.table(gene_aveMethy_top10p_final_sigRegion, "gene_aveMethy_top10p_final_sigRegion.txt", quote=FALSE, sep="\t", row.names=FALSE)
+
+
+library("limma")
+
+AD_factor <- read.table("covar_TIN.txt", header=TRUE, sep="\t")
+head(AD_factor)
+
+Methylation_factor <- read.table("Methylation_factor.txt", header=TRUE, sep="\t")
+head(Methylation_factor)
+
+head(gene_aveMethy_top10p_final_sigRegion)
+
+
+
+
+
+
+
+///all dmr genes
+
+AD_RNAseq <- read.csv(file="REFGENE_100.csv", header=TRUE, sep=",", check.names=FALSE)
+head(AD_RNAseq)
+
+results <- matrix(data=NA, ncol=2, nrow=length(gene_aveMethy_top10p_final_sigRegion[, 1]))
+for(i in 1: length(gene_aveMethy_top10p_final_sigRegion[, 1]))
+{
+	geneName <- as.character(gene_aveMethy_top10p_final_sigRegion[i, 1])
+	AD_RNAseq_gene <- subset(AD_RNAseq, AD_RNAseq$SYMBOL == geneName)
+
+	if(length(AD_RNAseq_gene[, 1]) == 1)
+	{
+		temp <- data.frame(AD_factor$BraakStage, AD_factor$Sex, AD_factor$Age, AD_factor$PostMortem, AD_factor$neurons, AD_factor$REFGENE_100, Methylation_factor$prop_GLU, t(AD_RNAseq_gene[, 10:34]), t(gene_aveMethy_top10p_final_sigRegion[i, 5: 29]))
+		colnames(temp) <- c("BraakStage", "Sex", "Age", "PostMortem", "neurons", "REFGENE_100", "prop_GLU", "geneExp", "aveMethy")
+		temp <- na.omit(temp)
+		
+		
+		design_geneexpression <- model.matrix(~ Sex + Age + PostMortem + neurons + REFGENE_100 , data=temp)
+		data_geneexpression <- temp$geneExp
+
+		fit_geneexpression <- lmFit(data_geneexpression,design= design_geneexpression,method="robust")
+		residuals_geneexpression <- residuals.MArrayLM(fit_geneexpression, t(data_geneexpression) )
+		fit_geneexpression <- eBayes(fit_geneexpression)
+		results[i, 1] <- cor.test(t(residuals_geneexpression), temp$BraakStage)$estimate
+		
+		
+		design_methylation <- model.matrix(~ Sex + Age + PostMortem + prop_GLU, data=temp)
+		data_methylation <- temp$aveMethy
+
+		fit_methylation <- lmFit(data_methylation,design= design_methylation,method="robust")
+		residuals_methylation <- residuals.MArrayLM(fit_methylation, t(data_methylation) )
+		fit_methylation <- eBayes(fit_methylation)
+		
+		results[i, 2] <- cor.test(t(residuals_methylation), temp$BraakStage)$estimate
+
+	}
+}
+colnames(results) <- c("cor_geneexpression", "cor_methylation")
+
+cor.test(results[, 1], results[, 2])
+
+	Pearson's product-moment correlation
+
+data:  results[, 1] and results[, 2]
+t = -3.6241, df = 1794, p-value = 0.0002981
+alternative hypothesis: true correlation is not equal to 0
+95 percent confidence interval:
+ -0.13098855 -0.03915173
+sample estimates:
+        cor 
+-0.08525121 
+
+
+
+write.table(results, "results_sigDMR.txt", quote=F, row.names=F, sep="\t")
+
+
+
+
+AD_Methylation_101_removeImprintGene_top10p_sort <- read.table("AD_Methylation_101_removeImprintGene_top10p_sort.txt", header=TRUE)
+
+head(AD_Methylation_101_removeImprintGene_top10p_sort)
+
+AD_Methylation_101_removeImprintGene_top10p_sort_RANSeq <- data.frame(AD_Methylation_101_removeImprintGene_top10p_sort[, 1:5], AD_Methylation_101_removeImprintGene_top10p_sort$F11, AD_Methylation_101_removeImprintGene_top10p_sort$E7, AD_Methylation_101_removeImprintGene_top10p_sort$P2A2, AD_Methylation_101_removeImprintGene_top10p_sort$P2C2, AD_Methylation_101_removeImprintGene_top10p_sort$B8, AD_Methylation_101_removeImprintGene_top10p_sort$B12, AD_Methylation_101_removeImprintGene_top10p_sort$E1, AD_Methylation_101_removeImprintGene_top10p_sort$H4, AD_Methylation_101_removeImprintGene_top10p_sort$H5, AD_Methylation_101_removeImprintGene_top10p_sort$P2A4, AD_Methylation_101_removeImprintGene_top10p_sort$A2, AD_Methylation_101_removeImprintGene_top10p_sort$A10, AD_Methylation_101_removeImprintGene_top10p_sort$B4, AD_Methylation_101_removeImprintGene_top10p_sort$E3, AD_Methylation_101_removeImprintGene_top10p_sort$G8, AD_Methylation_101_removeImprintGene_top10p_sort$B10, AD_Methylation_101_removeImprintGene_top10p_sort$D9, AD_Methylation_101_removeImprintGene_top10p_sort$E2, AD_Methylation_101_removeImprintGene_top10p_sort$G4, AD_Methylation_101_removeImprintGene_top10p_sort$P2C3, AD_Methylation_101_removeImprintGene_top10p_sort$C10, AD_Methylation_101_removeImprintGene_top10p_sort$D5, AD_Methylation_101_removeImprintGene_top10p_sort$D10, AD_Methylation_101_removeImprintGene_top10p_sort$E10, AD_Methylation_101_removeImprintGene_top10p_sort$F10 )
+
+colnames(AD_Methylation_101_removeImprintGene_top10p_sort_RANSeq) <- c("chr", "SNP", "str", "type", "seq", "F11", "E7", "P2A2", "P2C2", "B8", "B12", "E1", "H4", "H5", "P2A4", "A2", "A10", "B4", "E3", "G8", "B10", "D9", "E2", "G4", "P2C3", "C10", "D5", "D10", "E10", "F10")
+
+
+gene_final_bacRegion_notSigBac <- read.table("gene_final_bacRegion_notSigBac.txt", heade=T, sep="\t")
+head(gene_final_bacRegion_notSigBac)
+dim(gene_final_bacRegion_notSigBac)
+gene_final_bacRegion_notSigBac <- subset(gene_final_bacRegion_notSigBac, gene_final_bacRegion_notSigBac$gene != "NONE")
+dim(gene_final_bacRegion_notSigBac)
+
+
+
+
+
+aveMethy <- matrix(data=NA, ncol=25, nrow=length(gene_final_bacRegion_notSigBac[, 1]))
+for(i in 1: length(gene_final_bacRegion_notSigBac[, 1]))
+{
+sub <- subset(AD_Methylation_101_removeImprintGene_top10p_sort_RANSeq, AD_Methylation_101_removeImprintGene_top10p_sort_RANSeq$chr == gene_final_bacRegion_notSigBac[i, 2] & AD_Methylation_101_removeImprintGene_top10p_sort_RANSeq$SNP >= gene_final_bacRegion_notSigBac[i, 3] & AD_Methylation_101_removeImprintGene_top10p_sort_RANSeq$SNP <= gene_final_bacRegion_notSigBac[i, 4])
+
+aveMethy[i, ] <- colMeans(sub[, 6: 30], na.rm=TRUE)
+}
+colnames(aveMethy) <- colnames(AD_Methylation_101_removeImprintGene_top10p_sort_RANSeq[, 6: 30])
+gene_aveMethy_top10p_final_bacRegion_notSigBac <- data.frame(gene_final_bacRegion_notSigBac[, 1:4], aveMethy)
+
+
+##write.table(gene_aveMethy_top10p_final_bacRegion_notSigBac, "gene_aveMethy_top10p_final_bacRegion_notSigBac.txt", quote=FALSE, sep="\t", row.names=FALSE)
+
+
+library("limma")
+
+AD_factor <- read.table("covar_TIN.txt", header=TRUE, sep="\t")
+head(AD_factor)
+
+Methylation_factor <- read.table("Methylation_factor.txt", header=TRUE, sep="\t")
+head(Methylation_factor)
+
+head(gene_aveMethy_top10p_final_bacRegion_notSigBac)
+
+
+
+
+AD_RNAseq <- read.csv(file="REFGENE_100.csv", header=TRUE, sep=",", check.names=FALSE)
+head(AD_RNAseq)
+
+results <- matrix(data=NA, ncol=2, nrow=length(gene_aveMethy_top10p_final_bacRegion_notSigBac[, 1]))
+for(i in 1: length(gene_aveMethy_top10p_final_bacRegion_notSigBac[, 1]))
+{
+	geneName <- as.character(gene_aveMethy_top10p_final_bacRegion_notSigBac[i, 1])
+	AD_RNAseq_gene <- subset(AD_RNAseq, AD_RNAseq$SYMBOL == geneName)
+
+	if(length(AD_RNAseq_gene[, 1]) == 1)
+	{
+		temp <- data.frame(AD_factor$BraakStage, AD_factor$Sex, AD_factor$Age, AD_factor$PostMortem, AD_factor$neurons, AD_factor$REFGENE_100, Methylation_factor$prop_GLU, t(AD_RNAseq_gene[, 10:34]), t(gene_aveMethy_top10p_final_bacRegion_notSigBac[i, 5: 29]))
+		colnames(temp) <- c("BraakStage", "Sex", "Age", "PostMortem", "neurons", "REFGENE_100", "prop_GLU", "geneExp", "aveMethy")
+		temp <- na.omit(temp)
+		
+		
+		design_geneexpression <- model.matrix(~  Sex + Age + PostMortem + neurons + REFGENE_100 , data=temp)
+		data_geneexpression <- temp$geneExp
+
+		fit_geneexpression <- lmFit(data_geneexpression,design= design_geneexpression,method="robust")
+		residuals_geneexpression <- residuals.MArrayLM(fit_geneexpression, t(data_geneexpression) )
+		fit_geneexpression <- eBayes(fit_geneexpression)
+		results[i, 1] <- cor.test(t(residuals_geneexpression), temp$BraakStage)$estimate
+		
+		
+		design_methylation <- model.matrix(~ Sex + Age + PostMortem + prop_GLU, data=temp)
+		data_methylation <- temp$aveMethy
+
+		fit_methylation <- lmFit(data_methylation,design= design_methylation,method="robust")
+		residuals_methylation <- residuals.MArrayLM(fit_methylation, t(data_methylation) )
+		fit_methylation <- eBayes(fit_methylation)
+		
+		results[i, 2] <- cor.test(t(residuals_methylation), temp$BraakStage)$estimate
+
+	}
+}
+colnames(results) <- c("cor_geneexpression", "cor_methylation")
+
+
+cor.test(results[, 1], results[, 2])
+
+	Pearson's product-moment correlation
+
+data:  results[, 1] and results[, 2]
+t = 0.42556, df = 5165, p-value = 0.6704
+alternative hypothesis: true correlation is not equal to 0
+95 percent confidence interval:
+ -0.02134976  0.03318358
+sample estimates:
+        cor 
+0.005921315 
+
+write.table(results, "results_notDMR.txt", quote=F, sep="\t", row.names=F)
+
