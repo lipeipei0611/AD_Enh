@@ -1,0 +1,94 @@
+library("simsalapar")
+
+Genotype_data_cogdx14_new_SORT_DSCAML1_1MB_sub <- read.table("Genotype_data_cogdx14_new_SORT_DSCAML1_1MB_sub.txt", header=TRUE)
+dim(Genotype_data_cogdx14_new_SORT_DSCAML1_1MB_sub)
+Genotype_data_cogdx14_new_SORT_DSCAML1_1MB_sub_t <- t(Genotype_data_cogdx14_new_SORT_DSCAML1_1MB_sub)
+factor_gene_TIN_REF_100_geneExp <- read.table("factor_gene_TIN_REF_100_geneExp.txt", header=TRUE,sep="\t")
+head(factor_gene_TIN_REF_100_geneExp)
+
+
+library("limma")
+
+p_value <- matrix(data = 0, nrow = 9, ncol = 1)
+p_value_NA <- matrix(data = "NA", nrow = 9, ncol = 1)
+
+for (i in 1: 30020){
+data_me <- data.frame(factor_gene_TIN_REF_100_geneExp, as.numeric(Genotype_data_cogdx14_new_SORT_DSCAML1_1MB_sub_t[6: 283, i]))
+colnames(data_me) <- c( colnames(factor_gene_TIN_REF_100_geneExp), "genotype")
+design1 <- model.matrix(~ genotype + msex + age_death + pmi  + educ + prop.nnls + braaksc + TIN_REF_100, data= data_me)
+
+data2 <- data.frame(t(data_me$DSCAML1))
+
+x <- tryCatch.W.E(lmFit(data2,design=design1,method="robust"))
+if(!grepl("Error", x$value)) 
+{
+fit <- lmFit(data2,design=design1,method="robust")
+fit <- eBayes(fit)
+p_value <- cbind(p_value, t(fit$p.value))  
+}
+
+if(grepl("Error", x$value)) 
+{
+p_value <- cbind(p_value, p_value_NA)
+}
+
+next 
+}
+
+data_pvalue_DSCAML1 <- data.frame(Genotype_data_cogdx14_new_SORT_DSCAML1_1MB_sub[,1:3], t(p_value[,2: 30021]))
+
+data_pvalue_DSCAML1_notNA <- subset(data_pvalue_DSCAML1, data_pvalue_DSCAML1$genotype != "NA")
+head(data_pvalue_DSCAML1_notNA)
+write.table(data_pvalue_DSCAML1_notNA, "data_pvalue_DSCAML1_notNA.txt", row.names=FALSE, quote=FALSE)
+
+data_pvalue_DSCAML1_notNA_sub <- subset(data_pvalue_DSCAML1_notNA, as.numeric(as.character(data_pvalue_DSCAML1_notNA$genotype)) <= 0.05)[, c(1, 2, 3, 5)]
+write.table(data_pvalue_DSCAML1_notNA_sub, "data_pvalue_DSCAML1_notNA_sub.txt", row.names=FALSE, quote=FALSE)
+
+ 
+ 
+ 
+ 
+ 
+ 
+ library("rpgm")
+library(metap)
+
+data_pvalue_DSCAML1_notNA <- read.table("data_pvalue_DSCAML1_notNA.txt", header=TRUE)
+#head(data_pvalue_DSCAML1_notNA)
+dim(data_pvalue_DSCAML1_notNA)
+
+data <- data.frame(data_pvalue_DSCAML1_notNA[, 1:3], data_pvalue_DSCAML1_notNA$genotype)
+
+#data_500k <- subset(data, data$loc >= 117403237-500000 & data$loc <= 117647505 + 200000)
+data_500k <- subset(data, data$loc >= 117000000 & data$loc <= 117800000)
+
+loc_new <- read.table("loc_new.txt", header=FALSE)
+
+combinedP <- matrix(data = NA, nrow = length(loc_new[,1]), ncol = 1)
+for (i in 1: length(loc_new[,1])){
+	data_500k_haplo <- subset(data_500k, data_500k$loc >= loc_new[i, ]$V1 & data_500k$loc <=  loc_new[i, ]$V2)
+	if(length(data_500k_haplo[, 1]) >= 2)
+	{			
+	combinedP[i, 1] <- sumlog(data_500k_haplo[, 4])$p
+
+	}
+next 
+}
+
+p.adjust(combinedP[,1], method="fdr")
+combinedP_haplo <- data.frame(combinedP)
+head(combinedP_haplo)
+combinedP_haplo <- data.frame(loc_new, combinedP_haplo)
+dim(combinedP_haplo)
+
+combinedP_haplo_qvalue <- data.frame(combinedP_haplo, p.adjust(combinedP[,1], method="fdr"))
+
+
+combinedP_haplo_qvalue <- na.omit(combinedP_haplo_qvalue)
+colnames(combinedP_haplo_qvalue) <- c("start", "end", "combinedP", "fdr")
+head(combinedP_haplo_qvalue)
+
+write.table(combinedP_haplo_qvalue, "combinedP_haplo_DRegion_DSCAML1.txt", quote=F, sep="\t", row.names=F)
+
+
+
