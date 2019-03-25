@@ -1,0 +1,89 @@
+library("xlsx")
+inputFile <- "data/GOTHiC_neuron_40000_bon_0.05_final.txt"
+GOTHiC_neuron_40000_bon_0.05_final <- read.table(file.path(inputFile), header=FALSE, sep=" ")
+colnames(GOTHiC_neuron_40000_bon_0.05_final) <- c("chr1", "loc1_1", "loc1_2", "chr2", "loc2_1", "loc2_2")
+
+#AD_sig_region <- read.xlsx("region_great.xlsx", sheetName = "background_region" )
+AD_sig_region <- read.table("AD_sig_region.txt", header=TRUE)
+length(AD_sig_region[,1])
+AD_sig_region <- AD_sig_region[, 1:3]
+
+#AD_sig_region <- data.frame(AD_sig_region[,1:3], AD_sig_region$GREAT_Gene)
+#colnames(AD_sig_region) <- c("chr", "loc1", "loc2", "GREAT_Gene")
+
+AD_sig_region_interation1 <- AD_sig_region[1,]
+AD_sig_region_interaction2 <- GOTHiC_neuron_40000_bon_0.05_final[1,]
+
+interaction_GOTHiC_neuron_40000_bon_0.05_final <- data.frame(AD_sig_region_interation1, AD_sig_region_interaction2)
+AD_sig_region[,1] <- factor(AD_sig_region[,1], levels=levels(GOTHiC_neuron_40000_bon_0.05_final$chr1))
+
+
+for (i in 1: nrow(AD_sig_region) ){
+sub <- subset(GOTHiC_neuron_40000_bon_0.05_final[which(GOTHiC_neuron_40000_bon_0.05_final$chr1== AD_sig_region[i,1] & GOTHiC_neuron_40000_bon_0.05_final$loc1_1 <= (AD_sig_region[i,3]) & GOTHiC_neuron_40000_bon_0.05_final$loc1_2 >= (AD_sig_region[i,2]) ),])
+len <- length(sub[,1])
+if(len!=0)
+{
+	if(len==1)
+	{
+		temp <- AD_sig_region[i, ]
+	}
+	if(len >1)
+	{
+		temp <- AD_sig_region[i, ]
+ 		for (j in 1: (len-1))
+ 		{
+ 			temp <- rbind(temp, AD_sig_region[i, ])
+ 			next
+		}
+	}
+
+
+inter_sub <- data.frame(temp, sub)
+interaction_GOTHiC_neuron_40000_bon_0.05_final <- rbind(interaction_GOTHiC_neuron_40000_bon_0.05_final, inter_sub)
+}
+next
+}
+
+length(interaction_GOTHiC_neuron_40000_bon_0.05_final[,1])
+interaction_GOTHiC_neuron_40000_bon_0.05_final <- interaction_GOTHiC_neuron_40000_bon_0.05_final[2: 6726 , ]
+
+write.table(interaction_GOTHiC_neuron_40000_bon_0.05_final, "interaction_GOTHiC_neuron_40000_bon_0.05_final_AD_sig_region.txt", quote=FALSE, sep="\t", row.names=FALSE)
+
+
+
+
+inputFile <- "interaction_GOTHiC_neuron_40000_bon_0.05_final_AD_sig_region.txt"
+interaction_GOTHiC_neuron_40000_bon_0.05_final_AD_sig_region <- read.table(file.path(inputFile), header=TRUE, sep="\t")
+head(interaction_GOTHiC_neuron_40000_bon_0.05_final_AD_sig_region)
+length(interaction_GOTHiC_neuron_40000_bon_0.05_final_AD_sig_region[,1])
+
+inputFile <- "data/tss_FINAL.txt"
+tss <- read.table(file.path(inputFile), header=TRUE, sep="\t")
+head(tss)
+
+
+interaction_GOTHiC_neuron_40000_bon_0.05_final_AD_sig_region[,7] <- factor(interaction_GOTHiC_neuron_40000_bon_0.05_final_AD_sig_region[,7], levels=levels(tss$hg19.knownGene.chrom))
+
+gene <- matrix(data=0, ncol=1, nrow=1)
+colnames(gene) <- c("nearestGene")
+
+for (i in 1: nrow(interaction_GOTHiC_neuron_40000_bon_0.05_final_AD_sig_region) ){
+sub <- subset(tss[which(tss$hg19.knownGene.chrom == interaction_GOTHiC_neuron_40000_bon_0.05_final_AD_sig_region[i,7] & (tss$hg19.knownGene.txStart + 2000) >= (interaction_GOTHiC_neuron_40000_bon_0.05_final_AD_sig_region[i,8]) & tss$hg19.knownGene.txStart-2000 <= (interaction_GOTHiC_neuron_40000_bon_0.05_final_AD_sig_region[i,9]) ),])
+if(length(sub[,1])==0)
+{
+	temp <- c("NULL")
+}
+if(length(sub[,1])!=0)
+{
+temp <- data.frame(paste(unique(sub$hg19.kgXref.geneSymbol), collapse=", "))
+colnames(temp) <- c("nearestGene")
+}
+gene <- rbind(gene, temp)
+
+next
+}
+length(gene[,1])
+head(gene)
+gene <- gene[2: (nrow(interaction_GOTHiC_neuron_40000_bon_0.05_final_AD_sig_region)+1), ]
+interaction_GOTHiC_neuron_40000_bon_0.05_final_AD_sig_region_gene <- cbind(interaction_GOTHiC_neuron_40000_bon_0.05_final_AD_sig_region, gene)
+write.table(interaction_GOTHiC_neuron_40000_bon_0.05_final_AD_sig_region_gene, "interaction_GOTHiC_neuron_40000_bon_0.05_final_AD_sig_region_gene.txt", quote=FALSE, row.names=FALSE, sep="\t")
