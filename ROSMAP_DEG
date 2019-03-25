@@ -1,0 +1,78 @@
+factor_RNASeq_Methy_col_race1_methylation_geneExp_cogdx14_noNA_TIN <- read.table("factor_RNASeq_Methy_col_race1_methylation_geneExp_cogdx14_noNA_TIN.txt", header=T, sep="\t")
+
+ROSMAP_RNAseq_FPKM_gene_normalized_ensemble_overlaped_race1_cogdx14_noNA <- read.table("ROSMAP_RNAseq_FPKM_gene_normalized_ensemble_overlaped_race1_cogdx14_noNA.txt", header=TRUE, check.names=FALSE)
+
+
+
+
+
+ROSMAP_RNAseq_FPKM_gene_normalized_ensemble_overlaped_race1_cogdx14_noNA_FPKM1G70p <- ROSMAP_RNAseq_FPKM_gene_normalized_ensemble_overlaped_race1_cogdx14_noNA[rowSums(ROSMAP_RNAseq_FPKM_gene_normalized_ensemble_overlaped_race1_cogdx14_noNA[, 3: 340] >= 0.5 ) >= ceiling(338*0.7), ]
+
+dim(ROSMAP_RNAseq_FPKM_gene_normalized_ensemble_overlaped_race1_cogdx14_noNA_FPKM1G70p)
+
+[1] 15458   346
+
+
+rownames(ROSMAP_RNAseq_FPKM_gene_normalized_ensemble_overlaped_race1_cogdx14_noNA_FPKM1G70p) <- ROSMAP_RNAseq_FPKM_gene_normalized_ensemble_overlaped_race1_cogdx14_noNA_FPKM1G70p$gene_id
+
+RNASeq_exp <- log2(ROSMAP_RNAseq_FPKM_gene_normalized_ensemble_overlaped_race1_cogdx14_noNA_FPKM1G70p[, 3: 340]+1)
+RNASeq_t <- t(RNASeq_exp)
+
+mrna_id <- rownames(RNASeq_t)
+RNASeq_t <- data.frame(mrna_id, RNASeq_t)
+head(RNASeq_t[, 1:5])
+
+
+head(factor_RNASeq_Methy_col_race1_methylation_geneExp_cogdx14_noNA_TIN)
+
+library(data.table)
+keys <- c("mrna_id")
+RNASeq_t_table <- data.table(RNASeq_t, key=keys)
+factor_RNASeq_Methy_col_race1_methylation_geneExp_cogdx14_noNA_table <-  data.table(factor_RNASeq_Methy_col_race1_methylation_geneExp_cogdx14_noNA_TIN, key=keys)
+
+geneInfor <- factor_RNASeq_Methy_col_race1_methylation_geneExp_cogdx14_noNA_table[RNASeq_t_table, nomatch=0]
+geneInfor <- data.frame(geneInfor)
+
+head(geneInfor[, 1:50])
+
+row.names(geneInfor) <- geneInfor$mrna_id
+
+dim(geneInfor)
+geneInfor_ex <- geneInfor[, 42: 15499]
+geneInfor_ex_t <- t(geneInfor_ex)
+
+
+	
+design1 <- model.matrix(~ geneInfor$braaksc + geneInfor$msex + geneInfor$age_death + geneInfor$pmi + geneInfor$prop.nnls + geneInfor$educ + geneInfor$TIN_REF_100)
+
+data1 <- geneInfor_ex_t
+
+head(design1)
+library("limma")
+fit1 <- lmFit(data1,design=design1,method="robust")
+fit1 <- eBayes(fit1)
+
+
+rlmFit1 <- cbind(ROSMAP_RNAseq_FPKM_gene_normalized_ensemble_overlaped_race1_cogdx14_noNA_FPKM1G70p$gene_id, ROSMAP_RNAseq_FPKM_gene_normalized_ensemble_overlaped_race1_cogdx14_noNA_FPKM1G70p[, 341:346], toptable(fit1,coef=2,adjust.method="BH",sort="none",n=Inf))
+head(rlmFit1)
+write.table(rlmFit1, "rlmFit1_braak.txt", quote=FALSE, row.names=FALSE)
+
+rlmFit1_sub <- subset(rlmFit1, rlmFit1$adj.P.Val <= 0.05)
+length(rlmFit1_sub[,1])
+write.table(rlmFit1_sub, "rlmFit1_braak_sub.txt", quote=FALSE, row.names=FALSE)
+[1] 1478
+rlmFit1_sub  <- subset(rlmFit1_sub, !is.na(rlmFit1_sub$Gene_name) )
+Gene_name <- unique(rlmFit1_sub$Gene_name)
+length(Gene_name)
+[1] 1469
+
+write.table(Gene_name, "rlmFit1_braak_sub_Gene_name.txt", quote=FALSE, row.names=FALSE, col.names=FALSE)
+
+rlmFit1_braak <- read.table("rlmFit1_braak.txt", header=TRUE)
+head(rlmFit1_braak)
+rlmFit1_braak  <- subset(rlmFit1_braak, !is.na(rlmFit1_braak$Gene_name) )
+Gene_name <- unique(rlmFit1_braak$Gene_name)
+length(Gene_name)
+[1] 15327
+write.table(Gene_name, "rlmFit1_braak_Gene_name.txt", quote=FALSE, row.names=FALSE, col.names=FALSE)
+
