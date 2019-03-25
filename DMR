@@ -1,7 +1,4 @@
 ###---Transform b-value to m-value
-AD_factor <- subset(AD_factor_101_prop_GLU, AD_factor_101_prop_GLU$BraakStage >= 1 & AD_factor_101_prop_GLU$BraakStage <= 4)
-write.table(AD_factor, "AD_factor.txt", quote=FALSE, row.names=FALSE, sep="\t")
-
 
 AD_Methylation <- read.table("AD_Methylation.txt", header=TRUE)
 
